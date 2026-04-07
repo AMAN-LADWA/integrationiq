@@ -145,6 +145,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .time-input:focus { border-color: var(--accent); }
 
+.reset-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.reset-btn:hover:not(:disabled) { color: var(--red); border-color: var(--red); }
+.reset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .trigger-btn {
   background: var(--accent);
   color: #fff;

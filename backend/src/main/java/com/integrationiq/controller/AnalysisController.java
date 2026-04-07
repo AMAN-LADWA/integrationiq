@@ -53,6 +53,20 @@ public class AnalysisController {
     }
 
     /**
+     * Deletes all stored incidents, clearing the local database.
+     * The next analysis will re-query InfluxDB from scratch.
+     */
+    @DeleteMapping("/incidents")
+    public ResponseEntity<Map<String, Object>> resetIncidents() {
+        long count = incidentRepository.count();
+        incidentRepository.deleteAll();
+        return ResponseEntity.ok(Map.of(
+                "status", "cleared",
+                "deletedCount", count
+        ));
+    }
+
+    /**
      * Health check endpoint.
      */
     @GetMapping("/health")

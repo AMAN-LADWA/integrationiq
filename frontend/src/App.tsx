@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { FlowMetric, Incident, AnalysisStatus, AnalysisUpdate } from './types';
 import { useWebSocket } from './hooks/useWebSocket';
-import { triggerAnalysis, fetchIncidents } from './api';
+import { triggerAnalysis, fetchIncidents, resetIncidents } from './api';
 import { MetricCards } from './components/MetricCards';
 import { FlowHealthList } from './components/FlowHealthList';
 import { IncidentFeed } from './components/IncidentFeed';
@@ -45,6 +45,7 @@ export default function App() {
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -102,6 +103,24 @@ export default function App() {
   }, []);
 
   useWebSocket(handleUpdate);
+
+  async function handleReset() {
+    if (!window.confirm('Delete all stored incidents and clear the dashboard?')) return;
+    setResetting(true);
+    try {
+      const deleted = await resetIncidents();
+      setIncidents([]);
+      setMetrics([]);
+      setSelectedTenants(new Set());
+      setStatus('IDLE');
+      setStatusMsg('');
+      console.info(`Reset complete — ${deleted} incident(s) deleted.`);
+    } catch (_e) {
+      alert('Reset failed. Is the backend running?');
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function handleTrigger() {
     if (!fromInput || !toInput) return;
@@ -166,6 +185,14 @@ export default function App() {
               onChange={e => setToInput(fromDatetimeLocal(e.target.value))}
             />
           </div>
+          <button
+            className="reset-btn"
+            onClick={handleReset}
+            disabled={resetting || status === 'RUNNING'}
+            title="Delete all stored incidents and clear the dashboard"
+          >
+            {resetting ? 'Clearing…' : '⟳ Refresh DB'}
+          </button>
           <button
             className="trigger-btn"
             onClick={handleTrigger}

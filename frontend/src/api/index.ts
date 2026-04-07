@@ -12,6 +12,11 @@ export async function fetchIncidents(): Promise<Incident[]> {
   return data;
 }
 
+export async function resetIncidents(): Promise<number> {
+  const { data } = await axios.delete<{ deletedCount: number }>(`${BASE}/incidents`);
+  return data.deletedCount;
+}
+
 export async function checkHealth(): Promise<boolean> {
   try {
     const { data } = await axios.get(`${BASE}/health`);
