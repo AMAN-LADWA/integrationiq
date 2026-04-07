@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: integrationiq-backend
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/integrationiq}
+    username: ${POSTGRES_USER:iiq}
+    password: ${POSTGRES_PASSWORD:iiq_secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+influx:
+  url: ${INFLUX_URL:http://localhost:8086}
+  token: ${INFLUX_TOKEN:}
+  org: ${INFLUX_ORG:}
+  bucket: ${INFLUX_BUCKET:cpi}
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: claude-sonnet-4-20250514
+  max-tokens: 1024
+
+anomaly:
+  z-score-threshold: 2.0
+
+logging:
+  level:
+    com.integrationiq: INFO

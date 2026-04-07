@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: integrationiq-postgres
+    environment:
+      POSTGRES_DB: integrationiq
+      POSTGRES_USER: ${POSTGRES_USER:-iiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iiq_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iiq} -d integrationiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: integrationiq-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-cpi}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/integrationiq
+      POSTGRES_USER: ${POSTGRES_USER:-iiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iiq_secret}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: integrationiq-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
