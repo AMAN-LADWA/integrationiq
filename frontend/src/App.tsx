@@ -11,6 +11,18 @@ function formatISO(date: Date): string {
   return date.toISOString().replace('.000Z', 'Z');
 }
 
+// datetime-local input value <-> ISO string helpers
+function toDatetimeLocal(iso: string): string {
+  if (!iso) return '';
+  // "2024-01-01T12:00:00Z" -> "2024-01-01T12:00"
+  return iso.slice(0, 16);
+}
+
+function fromDatetimeLocal(local: string): string {
+  if (!local) return '';
+  return new Date(local).toISOString().replace('.000Z', 'Z');
+}
+
 function StatusBar({ status, message }: { status: AnalysisStatus; message: string }) {
   if (status === 'IDLE') return null;
   const cls = {
@@ -41,6 +53,7 @@ export default function App() {
     setFromInput(formatISO(yesterday));
     setToInput(formatISO(now));
 
+
     // Load existing incidents on mount
     fetchIncidents().then(setIncidents).catch(console.error);
   }, []);
@@ -69,10 +82,23 @@ export default function App() {
     setMetrics([]);
     try {
       await triggerAnalysis(fromInput, toInput);
-    } catch (e) {
+    } catch (_e) {
       setStatus('ERROR');
       setStatusMsg('Failed to trigger analysis. Is the backend running?');
     }
+  }
+
+  const quickRanges = [
+    { label: 'Last 1h',  ms: 60 * 60 * 1000 },
+    { label: 'Last 6h',  ms: 6 * 60 * 60 * 1000 },
+    { label: 'Last 24h', ms: 24 * 60 * 60 * 1000 },
+    { label: 'Last 7d',  ms: 7 * 24 * 60 * 60 * 1000 },
+  ];
+
+  function applyQuickRange(ms: number) {
+    const now = new Date();
+    setFromInput(formatISO(new Date(now.getTime() - ms)));
+    setToInput(formatISO(now));
   }
 
   return (
@@ -84,22 +110,27 @@ export default function App() {
           <span className="brand-sub">SAP Cloud Integration Monitor</span>
         </div>
         <div className="header-controls">
+          <div className="quick-ranges">
+            {quickRanges.map(r => (
+              <button key={r.label} className="quick-btn" onClick={() => applyQuickRange(r.ms)}>
+                {r.label}
+              </button>
+            ))}
+          </div>
           <div className="time-inputs">
             <label>From</label>
             <input
-              type="text"
+              type="datetime-local"
               className="time-input"
-              value={fromInput}
-              onChange={e => setFromInput(e.target.value)}
-              placeholder="2024-01-01T00:00:00Z"
+              value={toDatetimeLocal(fromInput)}
+              onChange={e => setFromInput(fromDatetimeLocal(e.target.value))}
             />
             <label>To</label>
             <input
-              type="text"
+              type="datetime-local"
               className="time-input"
-              value={toInput}
-              onChange={e => setToInput(e.target.value)}
-              placeholder="2024-01-02T00:00:00Z"
+              value={toDatetimeLocal(toInput)}
+              onChange={e => setToInput(fromDatetimeLocal(e.target.value))}
             />
           </div>
           <button
