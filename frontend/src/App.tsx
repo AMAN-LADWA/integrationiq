@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { FlowMetric, Incident, AnalysisStatus, AnalysisUpdate } from './types';
 import { useWebSocket } from './hooks/useWebSocket';
 import { triggerAnalysis, fetchIncidents } from './api';
@@ -6,15 +6,14 @@ import { MetricCards } from './components/MetricCards';
 import { FlowHealthList } from './components/FlowHealthList';
 import { IncidentFeed } from './components/IncidentFeed';
 import { LatencyChart } from './components/LatencyChart';
+import { TenantFilter } from './components/TenantFilter';
 
 function formatISO(date: Date): string {
   return date.toISOString().replace('.000Z', 'Z');
 }
 
-// datetime-local input value <-> ISO string helpers
 function toDatetimeLocal(iso: string): string {
   if (!iso) return '';
-  // "2024-01-01T12:00:00Z" -> "2024-01-01T12:00"
   return iso.slice(0, 16);
 }
 
@@ -45,18 +44,47 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState('');
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
+  const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
 
-  // Default time window: last 24 hours
   useEffect(() => {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     setFromInput(formatISO(yesterday));
     setToInput(formatISO(now));
-
-
-    // Load existing incidents on mount
-    fetchIncidents().then(setIncidents).catch(console.error);
+    fetchIncidents().then(data => {
+      setIncidents(data);
+      // Pre-select all tenants from loaded incidents
+      setSelectedTenants(new Set(data.map(i => i.anonymisedTenant)));
+    }).catch(console.error);
   }, []);
+
+  // All unique tenants across metrics + incidents
+  const allTenants = useMemo(() => {
+    const set = new Set<string>();
+    metrics.forEach(m => set.add(m.anonymisedTenant));
+    incidents.forEach(i => set.add(i.anonymisedTenant));
+    return [...set].sort();
+  }, [metrics, incidents]);
+
+  // When new tenants appear, auto-select them
+  useEffect(() => {
+    setSelectedTenants(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      allTenants.forEach(t => { if (!next.has(t)) { next.add(t); changed = true; } });
+      return changed ? next : prev;
+    });
+  }, [allTenants]);
+
+  const filteredMetrics = useMemo(
+    () => metrics.filter(m => selectedTenants.has(m.anonymisedTenant)),
+    [metrics, selectedTenants]
+  );
+
+  const filteredIncidents = useMemo(
+    () => incidents.filter(i => selectedTenants.has(i.anonymisedTenant)),
+    [incidents, selectedTenants]
+  );
 
   const handleUpdate = useCallback((update: AnalysisUpdate) => {
     setStatus(update.status === 'RUNNING' ? 'RUNNING'
@@ -110,6 +138,11 @@ export default function App() {
           <span className="brand-sub">SAP Cloud Integration Monitor</span>
         </div>
         <div className="header-controls">
+          <TenantFilter
+            tenants={allTenants}
+            selected={selectedTenants}
+            onChange={setSelectedTenants}
+          />
           <div className="quick-ranges">
             {quickRanges.map(r => (
               <button key={r.label} className="quick-btn" onClick={() => applyQuickRange(r.ms)}>
@@ -146,14 +179,14 @@ export default function App() {
       <StatusBar status={status} message={statusMsg} />
 
       <main className="main-content">
-        <MetricCards metrics={metrics} incidents={incidents} />
+        <MetricCards metrics={filteredMetrics} incidents={filteredIncidents} />
 
         <div className="two-column">
-          <FlowHealthList metrics={metrics} />
-          <IncidentFeed incidents={incidents} />
+          <FlowHealthList metrics={filteredMetrics} />
+          <IncidentFeed incidents={filteredIncidents} />
         </div>
 
-        <LatencyChart metrics={metrics} />
+        <LatencyChart metrics={filteredMetrics} />
       </main>
     </div>
   );

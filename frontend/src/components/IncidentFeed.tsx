@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import type { Incident } from '../types';
+
+type SortKey = 'severity' | 'zscore' | 'errorRate' | 'latency';
 
 interface Props {
   incidents: Incident[];
 }
+
+const SEVERITY_ORDER = { CRITICAL: 0, HIGH: 1, MEDIUM: 2 };
 
 function SeverityBadge({ severity }: { severity: Incident['severity'] }) {
   const cls = {
@@ -39,29 +44,59 @@ function IncidentCard({ incident }: { incident: Incident }) {
   );
 }
 
-export function IncidentFeed({ incidents }: Props) {
-  const sorted = [...incidents].sort((a, b) => {
-    const sOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2 };
-    return sOrder[a.severity] - sOrder[b.severity];
-  });
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'severity',  label: 'Severity'   },
+  { key: 'zscore',    label: 'Z-Score'    },
+  { key: 'errorRate', label: 'Error Rate' },
+  { key: 'latency',   label: 'Latency'    },
+];
 
-  if (sorted.length === 0) {
-    return (
-      <div className="panel">
-        <h2 className="panel-title">AI Incident Feed</h2>
-        <p className="empty-state">No incidents detected yet.</p>
-      </div>
-    );
-  }
+function sortIncidents(incidents: Incident[], by: SortKey): Incident[] {
+  return [...incidents].sort((a, b) => {
+    switch (by) {
+      case 'severity':  return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+      case 'zscore':    return b.anomalyScore - a.anomalyScore;
+      case 'errorRate': return b.errorRate - a.errorRate;
+      case 'latency':   return b.avgLatencyMs - a.avgLatencyMs;
+    }
+  });
+}
+
+export function IncidentFeed({ incidents }: Props) {
+  const [sortBy, setSortBy] = useState<SortKey>('severity');
+
+  const sorted = sortIncidents(incidents, sortBy);
 
   return (
     <div className="panel">
-      <h2 className="panel-title">AI Incident Feed <span className="count-badge">{sorted.length}</span></h2>
-      <div className="incident-list">
-        {sorted.map((incident) => (
-          <IncidentCard key={incident.id} incident={incident} />
-        ))}
+      <div className="panel-header-row">
+        <h2 className="panel-title">
+          AI Incident Feed {incidents.length > 0 && <span className="count-badge">{incidents.length}</span>}
+        </h2>
+        <div className="sort-controls">
+          <span className="sort-label">Sort:</span>
+          {SORT_OPTIONS.map(o => (
+            <button
+              key={o.key}
+              className={`sort-btn ${sortBy === o.key ? 'active' : ''}`}
+              onClick={() => setSortBy(o.key)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {sorted.length === 0
+        ? <p className="empty-state">No incidents detected yet.</p>
+        : (
+          <div className="incident-list">
+            {sorted.map(incident => (
+              <IncidentCard key={incident.id} incident={incident} />
+            ))}
+          </div>
+        )
+      }
     </div>
   );
 }

@@ -31,6 +31,9 @@ anthropic:
 anomaly:
   z-score-threshold: 2.0
 
+tenant:
+  anonymise: ${TENANT_ANONYMISE:true}
+
 logging:
   level:
     com.integrationiq: INFO

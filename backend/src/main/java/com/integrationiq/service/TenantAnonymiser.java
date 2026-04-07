@@ -1,20 +1,27 @@
 package com.integrationiq.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Stable, one-way anonymisation of tenant names.
- * Pattern: tenant-{abs(hashCode)} — deterministic so the same tenant
- * always maps to the same token across runs.
+ * Tenant name handling — controlled by the tenant.anonymise property.
+ * When true  (default): replaces tenant names with tenant-{hashCode}.
+ * When false           : passes the real tenant name through unchanged.
+ * Set TENANT_ANONYMISE=false in the environment to disable masking.
  */
 @Component
 public class TenantAnonymiser {
 
+    @Value("${tenant.anonymise:true}")
+    private boolean anonymise;
+
     public String anonymise(String rawTenant) {
         if (rawTenant == null || rawTenant.isBlank()) {
-            return "tenant-unknown";
+            return anonymise ? "tenant-unknown" : "unknown";
         }
-        int hash = rawTenant.hashCode();
-        return "tenant-" + Math.abs(hash);
+        if (!anonymise) {
+            return rawTenant;
+        }
+        return "tenant-" + Math.abs(rawTenant.hashCode());
     }
 }
