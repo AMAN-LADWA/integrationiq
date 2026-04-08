@@ -33,6 +33,7 @@ services:
       POSTGRES_URL: jdbc:postgresql://postgres:5432/integrationiq
       POSTGRES_USER: ${POSTGRES_USER:-iiq}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iiq_secret}
+      TENANT_ANONYMISE: ${TENANT_ANONYMISE:-true}
     ports:
       - "8080:8080"
 
